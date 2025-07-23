@@ -1,0 +1,225 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.Random;
+
+public class TypingSpeedTestGUI1 extends JFrame {
+    private final String[] sentences = {
+            "Java is a powerful programming language.",
+            "Typing speed improves with regular practice.",
+            "Artificial Intelligence is shaping the future.",
+            "Developers love solving complex problems.",
+            "Consistency is key to mastering any skill.",
+            "Fast typing enhances productivity.",
+            "Debugging is twice as hard as writing code.",
+            "Always write clean and maintainable code."
+    };
+
+    private String targetSentence;
+    private JTextArea textArea;
+    private JLabel sentenceLabel, timerLabel, wpmLabel, accuracyLabel;
+    private JButton startEndButton, restartButton, themeButton, clearScoresButton;
+    private JList<String> scoreList;
+    private DefaultListModel<String> scoreModel;
+    private boolean darkTheme = false;
+
+    private Timer timer;
+    private int elapsedSeconds = 0;
+    private boolean started = false;
+
+    public TypingSpeedTestGUI1() {
+        setTitle("Typing Speed Test");
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
+        setLayout(new BorderLayout());
+
+        initComponents();
+        applyTheme();
+        prepareNewTest();
+        setVisible(true);
+    }
+
+    private void initComponents() {
+        // Sentence
+        sentenceLabel = new JLabel("", SwingConstants.CENTER);
+        sentenceLabel.setFont(new Font("Arial", Font.BOLD, 18));
+
+        // Text area
+        textArea = new JTextArea();
+        textArea.setFont(new Font("Arial", Font.PLAIN, 16));
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        textArea.setEnabled(false);
+
+        JScrollPane textScrollPane = new JScrollPane(textArea);
+
+        // Timer and result labels
+        timerLabel = new JLabel("Time: 0 sec");
+        wpmLabel = new JLabel("WPM: 0");
+        accuracyLabel = new JLabel("Accuracy: 0%");
+
+        JPanel resultPanel = new JPanel();
+        resultPanel.add(timerLabel);
+        resultPanel.add(wpmLabel);
+        resultPanel.add(accuracyLabel);
+
+        // Buttons
+        startEndButton = new JButton("Start Test");
+        startEndButton.addActionListener(e -> {
+            if (!started) startTest();
+            else endTest();
+        });
+
+        restartButton = new JButton("Restart");
+        restartButton.setVisible(false);
+        restartButton.addActionListener(e -> startTest());
+
+        themeButton = new JButton("Toggle Theme");
+        themeButton.addActionListener(e -> toggleTheme());
+
+        JPanel controlPanel = new JPanel();
+        controlPanel.add(startEndButton);
+        controlPanel.add(restartButton);
+        controlPanel.add(themeButton);
+
+        // Scoreboard
+        scoreModel = new DefaultListModel<>();
+        scoreList = new JList<>(scoreModel);
+        JScrollPane scoreScrollPane = new JScrollPane(scoreList);
+        JLabel scoreLabel = new JLabel("Scoreboard");
+
+        clearScoresButton = new JButton("Clear Scores");
+        clearScoresButton.addActionListener(e -> scoreModel.clear());
+
+        JPanel scorePanel = new JPanel(new BorderLayout());
+        scorePanel.add(scoreLabel, BorderLayout.NORTH);
+        scorePanel.add(scoreScrollPane, BorderLayout.CENTER);
+        scorePanel.add(clearScoresButton, BorderLayout.SOUTH);
+        scorePanel.setPreferredSize(new Dimension(250, 0));
+
+        // Add to frame
+        add(sentenceLabel, BorderLayout.NORTH);
+        add(textScrollPane, BorderLayout.CENTER);
+        add(resultPanel, BorderLayout.SOUTH);
+        add(controlPanel, BorderLayout.WEST);
+        add(scorePanel, BorderLayout.EAST);
+
+        // Timer setup
+        timer = new Timer(1000, e -> {
+            elapsedSeconds++;
+            timerLabel.setText("Time: " + elapsedSeconds + " sec");
+        });
+
+        // Key bindings
+        textArea.addKeyListener(new KeyAdapter() {
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+                    if (started) endTest();
+                    e.consume();
+                }
+            }
+        });
+    }
+
+    private void prepareNewTest() {
+        Random rand = new Random();
+        targetSentence = sentences[rand.nextInt(sentences.length)];
+        sentenceLabel.setText("<html><div style='text-align:center'>" + targetSentence + "</div></html>");
+        textArea.setText("");
+        timerLabel.setText("Time: 0 sec");
+        wpmLabel.setText("WPM: 0");
+        accuracyLabel.setText("Accuracy: 0%");
+        textArea.setEnabled(false);
+        restartButton.setVisible(false);
+        startEndButton.setText("Start Test");
+    }
+
+    private void startTest() {
+        prepareNewTest();
+        textArea.setEnabled(true);
+        textArea.requestFocus();
+        elapsedSeconds = 0;
+        timer.start();
+        started = true;
+        startEndButton.setText("End Test");
+        restartButton.setVisible(true);
+    }
+
+    private void endTest() {
+        timer.stop();
+        started = false;
+
+        String userInput = textArea.getText().trim();
+        String[] originalWords = targetSentence.split(" ");
+        String[] typedWords = userInput.split(" ");
+
+        int correctWords = 0;
+        for (int i = 0; i < Math.min(originalWords.length, typedWords.length); i++) {
+            if (originalWords[i].equals(typedWords[i])) {
+                correctWords++;
+            }
+        }
+
+        double wpm = (correctWords / (elapsedSeconds / 60.0));
+        int correctChars = 0;
+        for (int i = 0; i < Math.min(targetSentence.length(), userInput.length()); i++) {
+            if (targetSentence.charAt(i) == userInput.charAt(i)) {
+                correctChars++;
+            }
+        }
+        double accuracy = ((double) correctChars / targetSentence.length()) * 100;
+
+        timerLabel.setText("Time: " + elapsedSeconds + " sec");
+        wpmLabel.setText("WPM: " + (int) wpm);
+        accuracyLabel.setText("Accuracy: " + (int) accuracy + "%");
+
+        textArea.setEnabled(false);
+        startEndButton.setText("Start Test");
+        restartButton.setVisible(false);
+
+        scoreModel.addElement("WPM: " + (int) wpm + " | Accuracy: " + (int) accuracy + "%");
+    }
+
+    private void toggleTheme() {
+        darkTheme = !darkTheme;
+        applyTheme();
+    }
+
+    private void applyTheme() {
+        Color bg = darkTheme ? Color.DARK_GRAY : Color.WHITE;
+        Color fg = darkTheme ? Color.WHITE : Color.BLACK;
+
+        getContentPane().setBackground(bg);
+        sentenceLabel.setForeground(fg);
+        timerLabel.setForeground(fg);
+        wpmLabel.setForeground(fg);
+        accuracyLabel.setForeground(fg);
+        scoreList.setBackground(bg);
+        scoreList.setForeground(fg);
+        textArea.setBackground(darkTheme ? new Color(50, 50, 50) : Color.WHITE);
+        textArea.setForeground(fg);
+
+        // Update all children recursively
+        for (Component c : getContentPane().getComponents()) {
+            updateComponentTheme(c, bg, fg);
+        }
+    }
+
+    private void updateComponentTheme(Component c, Color bg, Color fg) {
+        if (c instanceof JPanel || c instanceof JScrollPane) {
+            c.setBackground(bg);
+            if (c instanceof Container) {
+                for (Component child : ((Container) c).getComponents()) {
+                    updateComponentTheme(child, bg, fg);
+                }
+            }
+        } else if (c instanceof JLabel || c instanceof JButton) {
+            c.setBackground(bg);
+            c.setForeground(fg);
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(TypingSpeedTestGUI::new);
+    }
+}
